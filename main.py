@@ -5,7 +5,7 @@ from storage import *
 from parse import *
 
 def worker():
-    target=10000
+    target=1000
     tid = threading.get_ident()
     while get_num_parsed() < target:
         if get_num_parsed() % 100 == 0:

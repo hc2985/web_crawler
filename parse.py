@@ -31,10 +31,10 @@ def get_links(url):
                 return [len(response.data), "skipped:too_large"]
             content_type = response.headers.get('Content-Type', "")
         except urllib3.exceptions.ConnectTimeoutError as e:
-            print(f"Took too long: {e}")
+            print(f"Took too long to connect \n")
             return [0, "timeout"]
         except urllib3.exceptions.MaxRetryError as e:
-            print(f"Max retries exceeded: {e}")
+            print(f"Max retries exceeded \n")
             return [0, "max_retries_exceeded"]
 
         if response.status != 200:
