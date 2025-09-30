@@ -31,7 +31,7 @@ def worker():
 def main():
     # seed or add links to queue and url_dict -> check if new in parsed_dict -> if new get links -> add new links to queue and url_dict and parsed in parsed_dict -> pop from queue and repeat
     seeds = []
-    with open("seed2.txt", "r") as f:
+    with open("seed.txt", "r") as f:
         for line in f:
             seeds.append(line.strip())
     
@@ -50,7 +50,7 @@ def main():
     end_time = time.perf_counter()
 
     print("Writing output:")
-    with open("crawl_log2.txt", "w") as f:
+    with open("output1.txt", "w", encoding="utf-8", errors="replace") as f: # replace with ? when encoding error
         f.write(f"Crawling {len(parsed_dict)} pages finished in {end_time - start_time:.2f} seconds.\n")
         f.write(f"{len(parsed_dict)/(end_time - start_time):.2f} pages per second.\n\n")
         f.write("http errors encountered:\n")
@@ -65,9 +65,6 @@ def main():
                 f"size:{size:<15} "
                 f"status:{code:<15}\n"
             )
-
-    #for domain in domain_dict.keys():
-        #print(f"{domain}: {domain_dict[domain]}")
     
 if __name__ == "__main__":
     main()

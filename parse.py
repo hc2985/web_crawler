@@ -11,12 +11,13 @@ from storage import *
 retries = urllib3.util.Retry(total=1, backoff_factor=0.2)
 poolManager = urllib3.PoolManager(num_pools=50, maxsize=10, retries=retries)
 
+
 def clean_url(url):
     # removes fragments and queries
-    href = urllib.parse.quote(url, encoding='utf-8', safe=':/.?&=#-_')
-    cleaned = urllib.parse.urlparse(href, allow_fragments=False)
-    return urllib.parse.urlunparse(cleaned)
-    
+    url = urllib.parse.urldefrag(url)[0]
+    parts = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
 def get_links(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
@@ -50,9 +51,7 @@ def get_links(url):
             print(f"Skipping non-HTML/XML content {url}:")
             return ["non-HTML/XML content"]
         
-
-        #print("Parsing")
-        urls = soup.find_all('a', href=True)[:200]
+        urls = soup.find_all('a', href=True)[:200] #find all links, keep the first 200
 
         for link in urls:
             # process to get url and domain in the correct format
@@ -67,10 +66,20 @@ def get_links(url):
             if href not in url_dict:
                 if href.startswith('/'): # if relative link
                     link['href'] = urllib.parse.urljoin(url, href)  # combine base url with relative link
-                    link['domain'] = tldextract.extract(urllib.parse.urlparse(link['href']).netloc).domain # get domain
+                    extract = tldextract.extract(urllib.parse.urlparse(link['href']).netloc)
+                    link['domain'] = extract.domain+"."+extract.suffix # get domain
+                    if extract.subdomain:
+                        link['full_domain'] = extract.subdomain+"."+extract.domain+"."+extract.suffix
+                    else:
+                        link['full_domain'] = extract.domain+"."+extract.suffix
                 elif href.startswith('http'):
                     link['href'] = href # url is full
-                    link['domain'] = tldextract.extract(urllib.parse.urlparse(href).netloc).domain # get domain
+                    extract = tldextract.extract(urllib.parse.urlparse(href).netloc)
+                    link['domain'] = extract.domain+"."+extract.suffix # get domain
+                    if extract.subdomain:
+                        link['full_domain'] = extract.subdomain+"."+extract.domain+"."+extract.suffix
+                    else:
+                        link['full_domain'] = extract.domain+"."+extract.suffix
                 else: # ignore other types of links 
                     link['href'] = "invalid"
             else: # ignore other types of links 
@@ -120,9 +129,13 @@ def parse_pipeline(temp):
         for link in links[:-2]:
             if link['href'] != "invalid":
                 domain = link['domain']
+                full_domain = link['full_domain']
                 if domain not in domain_dict:
-                    safe_dictadd("domain", domain, 2)
-                heap_points = 1/(iteration*math.log(2*domain_dict[domain]+1))
+                    safe_dictadd("domain", domain, 1)
+                if full_domain not in full_domain_dict:
+                    safe_dictadd("full_domain", full_domain, 1)
+                heap_points = 1/(iteration*math.log(2*domain_dict[domain]+full_domain_dict[full_domain]+2))
                 safe_heappush(-heap_points, link['href'])                
                 safe_dictadd("url", link['href'], iteration + 1)
                 safe_dictadd("domain", domain, domain_dict[domain]+1)
+                safe_dictadd("full_domain", full_domain, full_domain_dict[full_domain]+1)

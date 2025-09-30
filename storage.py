@@ -9,7 +9,9 @@ url_dict = {}
 errors_dict = defaultdict(int)
 priority_heapq = []
 heapq.heapify(priority_heapq)
-domain_dict = {}    
+domain_dict = {}
+full_domain_dict = {}
+
 heaplock = threading.Lock()
 dictlock = threading.Lock()
 
@@ -21,6 +23,8 @@ def safe_dictadd(name, key, value):
             parsed_dict[key] = value
         elif name == "domain":
             domain_dict[key] = value
+        elif name == "full_domain":
+            full_domain_dict[key] = value
         elif name == "error":
             errors_dict[key] += 1
             
