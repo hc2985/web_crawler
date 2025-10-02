@@ -1,0 +1,43 @@
+Description on how the crawler functions:
+- seed links are first queried and set inserted into heap with the highest possible score.
+- main function creates threads that will each parse until number of parsed websites reach target.
+- thread will write and pop from hash map and heap with locks to prevent race conditions.
+- each thread will create a single thread that will be timed out if parsing takes too long.
+- link to be parsed will be popped from the heap.
+- each link will be checked if they were parsed previously by checking a hash map.
+- each link will be checked if robots.txt allows crawling.
+- links that take too long to read or require too many redirects will not be parsed.
+- links will be given 1 retry and 3 redirects.
+- PoolManager will retain connections with 500 domains and 10 links per domain.
+- files that do not provide filetype html or xhtml will not be parsed.
+- files that have size greater than 1MB will not be parsed.
+- information about the link parsed including the time completed, depth, filesize, status, and score will be
+    retained by the hash map that keeps tracked of parsed links.
+- each link found when parsed will be cleaned, and statistics including the amount of the link's domain seen,
+    the amount of link's super domain seen, the priority score of the link, depth from seed will be calculated.
+- statistics on links from domain seen and links from super domain seen is tracked with a hash map.
+- each link found when parsed will be checked if it is a duplicate.
+- only first 200 links found from parsing a link will be retained.
+- links that are marked to be valid will be pushed into the hash map that checks if duplicate and pushed into
+    heap sorted by the priority score.
+- if heap stores more than 20,000 links, the heap will only retain the best 10,000 links.
+- when complete each thread will join and log will be written onto the output file.
+
+Major Functions:
+- main: creates threads that calls worker. once complete prints out log onto output file.
+- worker: task that threads will complete. gets link to parse and calls parse_pipeline to parse link
+    until target reached.
+- get_seed_link: queries to get seed links.
+- parse_pipeline: parses url from heap and add new links to the heap and respective hash maps.
+    also calculates the scores of links returned by get_links.
+- get_links: parses url following the steps listed above and returns the list of links that was obtained by parsing. 
+- clean_links: removes fragements and queries from links. 
+- handle_robot: checks for robots.txt file and returns whether crawler can crawl
+- safe... : functions that uses locks to avoid race conditions.
+
+
+Known Quirks (trivial bugs):
+- Parses up to # of threads pages more than target pages parsed ex:(target: 10000, threads: 10, 10000 <= total_parsed <= 10010)
+- Links blocked by robots.txt not logged as crawler will not attempt to parse
+- If websites mark file as html or xhtml and present a xml file, the parser detects and parses as xml instead of ignoring
+- Some threads may stay alive after crawling finishes. Closing and restarting the terminal may be required to relaunch the crawler.

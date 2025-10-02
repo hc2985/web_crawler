@@ -9,7 +9,7 @@ from storage import *
 
 
 retries = urllib3.util.Retry(total=1, backoff_factor=0.2)
-poolManager = urllib3.PoolManager(num_pools=50, maxsize=10, retries=retries)
+poolManager = urllib3.PoolManager(num_pools=500, maxsize=10, retries=retries)
 
 
 def clean_url(url):
@@ -25,11 +25,10 @@ def get_links(url):
                    'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'} # prioritize text/html or xhtml+xml    
         #get response
         try:
-            response = poolManager.request('GET', url, headers=headers, timeout=3)
+            response = poolManager.request('GET', url, headers=headers, timeout=2)
             if len(response.data) > (1*1024*1024):
                 print(f"file larger than 1MB, skipping")
                 return [len(response.data), "skipped:too_large"]
-            content_type = response.headers.get('Content-Type', "")
         except urllib3.exceptions.ConnectTimeoutError as e:
             print(f"Took too long to connect \n")
             return [0, "timeout"]
@@ -48,8 +47,8 @@ def get_links(url):
             soup = BeautifulSoup(response.data, 'lxml') 
         else:
             #ignore everything else (dont parse)
-            print(f"Skipping non-HTML/XML content {url}:")
-            return ["non-HTML/XML content"]
+            print(f"Skipping non-HTML content {url}:")
+            return ["non-HTML content"]
         
         urls = soup.find_all('a', href=True)[:200] #find all links, keep the first 200
 
@@ -95,17 +94,17 @@ def get_links(url):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         
+        
 def handle_robot(url):
     # handle robots.txt
     try:
         parsed_url = urllib.parse.urlparse(url)
         robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
-
         response = urllib.robotparser.RobotFileParser()
         response.set_url(robots_url)
         response.read()
-        
-        return response.can_fetch("*", url)
+        can_fetch = response.can_fetch("*", url)
+        return can_fetch
         
     except urllib.error.URLError as e:
         print(f"Error accessing URL: {e.reason}")
@@ -114,17 +113,20 @@ def handle_robot(url):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         
-        
 def parse_pipeline(temp):
     #parse url from heapq and add new links to the heapq and respective dicts
-    can_fetch = handle_robot(temp[1])
     current_url = temp[1]
     if current_url not in parsed_dict:
-        #print(f"Processing: {temp}\n")
-        iteration = url_dict[current_url]
-        links = get_links(current_url) 
-        safe_dictadd("parsed", current_url, [datetime.now().strftime("%H:%M:%S"), iteration, links[-2], links[-1]]) #change to add time, depth, size, return code
-        if not links or len(links) <= 2:
+        iteration = url_dict[current_url][0]
+        score = url_dict[current_url][1]
+        can_fetch = handle_robot(temp[1])
+        if can_fetch:
+            links = get_links(current_url) 
+            safe_dictadd("parsed", current_url, [datetime.now().strftime("%H:%M:%S"), iteration, links[-2], links[-1], score]) #change to add time, depth, size, return code
+            if not links or len(links) <= 2:
+                return
+        else:
+            safe_dictadd("parsed", current_url, [datetime.now().strftime("%H:%M:%S"), iteration, 0, "blocked by robots.txt", score])
             return
         for link in links[:-2]:
             if link['href'] != "invalid":
@@ -134,8 +136,8 @@ def parse_pipeline(temp):
                     safe_dictadd("domain", domain, 1)
                 if full_domain not in full_domain_dict:
                     safe_dictadd("full_domain", full_domain, 1)
-                heap_points = 1/(iteration*math.log(2*domain_dict[domain]+full_domain_dict[full_domain]+2))
+                heap_points = 10/(iteration+math.log(domain_dict[domain]+full_domain_dict[full_domain]+2))
                 safe_heappush(-heap_points, link['href'])                
-                safe_dictadd("url", link['href'], iteration + 1)
+                safe_dictadd("url", link['href'], [iteration + 1, heap_points])
                 safe_dictadd("domain", domain, domain_dict[domain]+1)
                 safe_dictadd("full_domain", full_domain, full_domain_dict[full_domain]+1)
