@@ -9,7 +9,7 @@ from storage import *
 
 
 retries = urllib3.util.Retry(total=1, backoff_factor=0.2)
-poolManager = urllib3.PoolManager(num_pools=500, maxsize=10, retries=retries)
+poolManager = urllib3.PoolManager(num_pools=50, maxsize=10, retries=retries)
 
 
 def clean_url(url):

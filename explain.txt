@@ -8,7 +8,7 @@ Description on how the crawler functions:
 - each link will be checked if robots.txt allows crawling.
 - links that take too long to read or require too many redirects will not be parsed.
 - links will be given 1 retry and 3 redirects.
-- PoolManager will retain connections with 500 domains and 10 links per domain.
+- PoolManager will retain connections with 50 domains and 10 links per domain.
 - files that do not provide filetype html or xhtml will not be parsed.
 - files that have size greater than 1MB will not be parsed.
 - information about the link parsed including the time completed, depth, filesize, status, and score will be
@@ -35,9 +35,11 @@ Major Functions:
 - handle_robot: checks for robots.txt file and returns whether crawler can crawl
 - safe... : functions that uses locks to avoid race conditions.
 
-
 Known Quirks (trivial bugs):
-- Parses up to # of threads pages more than target pages parsed ex:(target: 10000, threads: 10, 10000 <= total_parsed <= 10010)
-- Links blocked by robots.txt not logged as crawler will not attempt to parse
-- If websites mark file as html or xhtml and present a xml file, the parser detects and parses as xml instead of ignoring
+- Parses up to # of threads pages more than target pages parsed ex:(target: 10000, threads: 10, 10000 <= total_parsed <= 10010).
+- If websites mark file as html or xhtml and present a xml file, the parser detects and parses as xml instead of ignoring.
 - Some threads may stay alive after crawling finishes. Closing and restarting the terminal may be required to relaunch the crawler.
+- Because some threads may stay alive, messages of threads failing to complete may print after completed.
+
+**note:
+While threads may continue and not end, the output file will be generated without issue.
